@@ -53,14 +53,11 @@ void encoderISR(void)
 #define toggle(cond, set, clr)			\
  if (cond) {set;} else {clr;}
 
-#define DBG_CMP 1
-#define DBG_INT 1
-
 void cmpTmrISR(void)
 {
  uint16_t captureVal;
  uint16_t delta;
- if (DBG_CMP)
+ if (DBG_CMP_TIME)
   dbgCapIsrSet();
 
  if (cmpTmrCap1IF())		/* if encoder input pulse */
@@ -71,15 +68,21 @@ void cmpTmrISR(void)
   encoderClr();			/* clear encoder bit */
   delta = captureVal - cmpTmr.lastEnc; /* time since last pulse */
   cmpTmr.lastEnc = captureVal;	/* save time of last capture */
-  cmpTmr.encClocks += delta;	/* add to total in cycle */
   cmpTmr.encPulse -= 1;		/* count off a pulse */
+#if ARRAY
+  uint32_t cycleClocks = cmpTmr.cycleClocks; /* get cycleclocks */
+  uint16_t *p = &cmpTmr.delta[cmpTmr.encPulse]; /* get loc in history array */
+  cycleClocks -= *p;		/* subtract old value */
+  cycleClocks += delta;		/* add in new value */
+  *p = delta;			/* save new value */
+#else
+  cmpTmr.encClocks += delta;	/* add to total in cycle */
   uint32_t cycleClocks = cmpTmr.encClocks + delta * cmpTmr.encPulse;
+#endif
   cmpTmr.cycleClocks = cycleClocks; /* update clocks in a cycle */
 
   if (DBG_CMP)
   {
-   toggle(cmpTmr.encCount & 1, dbgIntCSet(), dbgIntCClr());
-   cmpTmr.encCount += 1;		/* count interrupt */
    if (DBGTRK2WL0)
    {
     dbgTrk2WL(cmpTmr.encPulse, delta, cycleClocks);
@@ -89,37 +92,59 @@ void cmpTmrISR(void)
   if (cmpTmr.encPulse <= 0)	/* if end of cycle */
   {
    cmpTmr.encPulse = cmpTmr.encCycLen; /* reset cycle counter */
+#if ARRAY == 0
    cmpTmr.encClocks = 0;	/* reset clock accumulator */
+#endif
    if (cmpTmr.startInt)		/* if time to start internal timer */
    {
+#if START_DELAY == 0
     syncOutSet();		/* set sync out */
     intTmrStart();		/* start timer */
     cmpTmr.startInt = 0;	/* clear flag */
-    cmpTmr.intPulse = cmpTmr.intCycLen; /* initialize counter to cycle len */
     uint16_t ctr = cycleClocks / cmpTmr.intCycLen;
     cmpTmr.intClocks = ctr;	/* initialize clock counter */
     intTmrSet(ctr - 1);		/* set timer interval */
     syncOutClr();		/* clear sync out */
+#else
+    intTmrStart();		/* start timer */
+    cmpTmr.startInt = 0;	/* clear flag */
+#endif
 
     if (DBG_INT)
     {
      dbgCycEndClr();
+#if START_DELAY == 0
      cmpTmr.intCount += 1;	/* count interrupt */
      toggle(cmpTmr.intCount  & 1, dbgIntPSet(), dbgIntPClr());
      if (DBGTRK2WL1)
      {
       dbgTrk2WL(cmpTmr.intPulse, ctr, cmpTmr.intClocks);
      }
+#endif
     }
    }
+
+  if (DBG_COUNT)
+  {
+   cmpTmr.encCount += 1;	/* count interrupt */
    if (DBG_CMP)
    {
+    toggle(cmpTmr.encCount & 1, dbgIntCSet(), dbgIntCClr());
+   }
+  }
+
+   if (DBG_COUNT)
+   {
     cmpTmr.cycleCount += 1;
-    toggle(cmpTmr.cycleCount & 1, dbgCycleSet(), dbgCycleClr());
+    if (DBG_CMP)
+    {
+     toggle(cmpTmr.cycleCount & 1, dbgCycleSet(), dbgCycleClr());
+    }
    }
   }
  }
 
+#if 0
  if (cmpTmrIF())		/* if update interrupt */
  {
   cmpTmrClrIF();		/* clear interrupt flag */
@@ -130,7 +155,8 @@ void cmpTmrISR(void)
   cmpTmrCap2ClrIF();		/* clear interrupt */
   cmpTmrOCP2Clr();		/* clear over capture flag */
  }
- if (DBG_CMP)
+#endif
+ if (DBG_CMP_TIME)
   dbgCapIsrClr();
 }
 
@@ -138,20 +164,18 @@ void intTmrISR(void)
 {
  syncOutSet();
  intTmrClrIF();			/* clear interrupt */
+#if START_DELAY == 0
  cmpTmr.intPulse -= 1;		/* count a pulse in cycle */
  uint32_t ctr  = ((cmpTmr.cycleClocks - cmpTmr.intClocks) /
 		  cmpTmr.intPulse);
+#else
+ uint32_t ctr  = ((cmpTmr.cycleClocks - cmpTmr.intClocks) /
+		  cmpTmr.intPulse);
+ cmpTmr.intPulse -= 1;		/* count a pulse in cycle */
+#endif
  cmpTmr.intClocks += ctr;	/* update count for next interrupt */
 
- if (DBG_INT)
- {
-  if (cmpTmr.intPulse > 0)
-  {
-   cmpTmr.intCount += 1;
-   toggle(cmpTmr.intCount & 1, dbgIntPSet(), dbgIntPClr());
-  }
- }
-
+#if START_DELAY == 0
  if (cmpTmr.intPulse > 1)	/* if not last pulse */
  {
   intTmrSet(ctr - 1);		/* set timer interval */
@@ -161,20 +185,47 @@ void intTmrISR(void)
   intTmrStop();			/* stop timer */
   intTmrSet(0xffff);		/* set to maximum */
   intTmrClr();			/* clear counter */
+  cmpTmr.intPulse = cmpTmr.intCycLen; /* initialize counter to cycle len */
   cmpTmr.startInt = 1;		/* start on next encoder pulse */
 
   if (DBG_INT)
    dbgCycEndSet();
+ }
+#else
+ if (cmpTmr.intPulse > 0)	/* if not done */
+ {
+  intTmrSet(ctr - 1);		/* set timer interval */
+ }
+ else
+ {
+  intTmrStop();			/* stop timer */
+  intTmrSet(cmpTmr.startDelay);	/* set to start value */
+  intTmrClr();			/* clear counter */
+  cmpTmr.intPulse = cmpTmr.intCycLen; /* initialize counter to cycle len */
+  cmpTmr.intClocks = 0;		/* clear clock counter */
+  cmpTmr.startInt = 1;		/* start on next encoder pulse */
+
+  if (DBG_INT)
+   dbgCycEndSet();
+ }
+#endif 
+
+ if (DBG_COUNT)
+ {
+  cmpTmr.intCount += 1;
+  if (DBG_INT)
+  {
+   toggle(cmpTmr.intCount & 1, dbgIntPSet(), dbgIntPClr());
+  }
  }
 
  if (DBG_INT)
  {
   if (DBGTRK2WL1)
   {
-   dbgTrk2WL(cmpTmr.intPulse, ctr, cmpTmr.intClocks);
+   dbgTrk2WL(1000 + cmpTmr.intPulse, ctr, cmpTmr.intClocks);
   }
  }
-
  syncOutClr();
 }
 

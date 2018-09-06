@@ -3,12 +3,12 @@
 #if DBGTRK
 
 EXT boolean dbgTrk;
-#define TRKBUFSIZE (4*128)
+#define TRKBUFSIZE (4*64)
 EXT int16_t trkidx;
 EXT int16_t trkbuf[TRKBUFSIZE];
 
-#define DBGTRK2WL0 0            /* encoder capature */
-#define DBGTRK2WL1 1            /* interal capature */
+#define DBGTRK2WL0 1            /* encoder capature */
+#define DBGTRK2WL1 0            /* interal capature */
 
 #define DBGTRK1W 0
 #define dbgTrk1W(val1)

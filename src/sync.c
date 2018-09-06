@@ -16,6 +16,15 @@
 #include "config.h"
 #include "dbg.h"
 
+#define DBG_CMP 1		/* debug capture timer */
+#define DBG_CMP_TIME 1		/* debug capture interrupt timing */
+#define DBG_INT 1		/* debug internal timer */
+#define DBG_COUNT 1		/* debug count input and output pulses */
+
+#define ARRAY 1			/* use array for cycle length */
+#define ARRAY_LEN 2048		/* size of array */
+#define START_DELAY 2		/* delay internal start */
+
 #define CALC_STEP_WIDTH(x) ((uint16_t) ((cfgFcy * x) / 1000000l))
 
 typedef uint8_t boolean;
@@ -35,8 +44,8 @@ typedef struct
  uint32_t intCount;		/* internal counts */
  uint32_t cycleCount;		/* encoder cycle counter */
  
- unsigned int encCycLen;	/* encoder cycle length */
- int encPulse;			/* encoder pulse number */
+ int16_t encCycLen;		/* encoder cycle length */
+ int16_t encPulse;		/* encoder pulse number */
  uint16_t lastEnc;		/* last encoder capture */
  uint32_t encClocks;		/* clocks in current encoder cycle */
  uint32_t cycleClocks;		/* estimated clocks in cycle */
@@ -47,6 +56,14 @@ typedef struct
  int intCycLen;			/* internal cycle length */
  int intPulse;			/* internal pulse number */
  uint32_t intClocks;		/* clocks in current internal cycle */
+
+#if START_DELAY
+ int16_t startDelay;		/* initial delay */
+#endif
+
+#if ARRAY
+ uint16_t delta[ARRAY_LEN];	/* saved delta values */
+#endif
 } T_CMP_TMR, *P_CMP_TMR;
 
 EXT T_CMP_TMR cmpTmr;
@@ -113,21 +130,39 @@ void encoderStart()
 
  printf("encoderStart\n");
  intTmrClr();			/* clear counter */
+#if START_DELAY == 0
  intTmrSet(0xffff);		/* set count to maximum */
+#else
+ cmpTmr.startDelay = (uint16_t) ((cfgFcy * START_DELAY) / 1000000l - 1);
+ intTmrSet(cmpTmr.startDelay);	/* set to initial delay */
+#endif
  intTmrScl(cmpTmr.preScale - 1); /* set prescaler */
  intTmrSetIE();			/* enable interrupts */
+
+#if ARRAY
+ cmpTmr.cycleClocks = 0;	/* clear cycle clocks */
+ cmpTmr.lastEnc = 0;		/* clear last encoder vale */
+ memset(&cmpTmr.delta, 0, sizeof(cmpTmr.delta)); /* clear delta array */
+#endif
+
+ cmpTmr.encClocks = 0;		/* clear clocks in current cycle */
 
  cmpTmr.encPulse = cmpTmr.encCycLen; /* initialize encoder counter */
  cmpTmr.intPulse = cmpTmr.intCycLen; /* initialize internal counter */
 
- cmpTmr.intCount = 0;		/* clear counters */
- cmpTmr.encCount = 0;
+#if DBG_COUNT
+ cmpTmr.encCount = 0;		/* clear counters */
+ cmpTmr.intCount = 0;
+ cmpTmr.cycleCount = 0;
+#endif
 
- cmpTmrCnt(0xffff);		/* set count to maximum */
+ cmpTmrClrIE();			/* disable update interrupts */
+ cmpTmrClr();			/* clear counter */
  cmpTmrSet(0xffff);		/* set count to maximum */
  cmpTmrScl(cmpTmr.preScale - 1); /* set prescaler */
  cmpTmrCap1EnaSet();		/* enable capture from encoer */
  cmpTmrCap1SetIE();		/* enable capture interrupt */
+ cmpTmr.intClocks = 0;		/* clear clocks in current cycle */
  cmpTmr.startInt = 1;
 #if DBGTRK
  dbgTrk = true;
