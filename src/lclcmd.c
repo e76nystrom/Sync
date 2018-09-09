@@ -105,6 +105,17 @@ void lclcmd(int ch)
   newline();
   encoderStart();
  }
+ else if (ch == '?')
+ {
+  newline();
+// (clocksPerSec*60*ratioDenom)/(clocksCycle*encoderPulse)
+  uint32_t tmrClkFreq = HAL_RCC_GetPCLK2Freq();
+  uint64_t n = (uint64_t) tmrClkFreq * 60 * cmpTmr.encCycLen;
+  uint64_t d = ((uint64_t) cmpTmr.cycleClocks * cmpTmr.preScale * encPulse);
+  printf("n %lld d %lld\n", n, d);
+  uint16_t rpm = (uint16_t) (n / d);
+  printf("%d rpm\n", rpm);
+ }
  
 #if ENCODER_TEST
 
