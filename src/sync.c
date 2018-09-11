@@ -31,8 +31,17 @@ typedef uint8_t boolean;
 
 #include "dbgtrk.h"
 
+unsigned int millis();
+
 #define DIR_POS      1           /* 0x01 positive direction */
 #define DIR_NEG      -1          /* 0x-1 negative direction */
+
+#define MAX_TIMEOUT UINT_MAX
+#define REMCMD_TIMEOUT 1000U
+#define INDEX_TIMEOUT 1500U
+
+EXT unsigned int remcmdUpdateTime;
+EXT unsigned int remcmdTimeout;
 
 EXT uint32_t cfgFcy;
 

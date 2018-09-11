@@ -10,10 +10,8 @@
 #include "config.h"
 #include "dbg.h"
 
-#ifdef REMPORT
 #include "remcmd.h"
 #include "remvar.h"
-#endif
 
 #define EXT
 #endif
@@ -47,8 +45,6 @@ unsigned char getfloat();
 void prtbuf(unsigned char *p, int size);
 void prtibuf(int16_t *p, int size);
 
-#ifdef REMPORT
-
 /* polled remote port routines */
 
 void putx1(char c);
@@ -68,8 +64,6 @@ int getRem();
 char gethexRem();
 char getstrRem(char *buf, int bufLen);
 unsigned char getnumRem();
-
-#endif
 
 /* debug message routines */
 
@@ -525,8 +519,6 @@ void prtibuf(int16_t *p, int size)
  }
 }
 
-#ifdef REMPORT
-
 /* polled remote port routines */
 
 void putx1(char c)
@@ -973,8 +965,6 @@ unsigned char getnumRem()
  }
  return(NO_VAL);
 }
-
-#endif
 
 void initCharBuf()
 {

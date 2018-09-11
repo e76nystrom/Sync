@@ -20,7 +20,7 @@ else:
 encoderPulse = 10160
 leadscrewPitch = 5
 motorSteps = 200
-microSteps = 10
+microSteps = 8
 
 if argLen >= 3:
     encoderPulse = int(sys.argv[2])

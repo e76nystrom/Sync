@@ -6,13 +6,10 @@
 #define USEC_MIN (60L * 1000000L)
 
 #define DBGPORT USART1
-
-#if 0
 #define REMPORT USART3
 
 #define remoteISR(x) USART3_IRQHandler(x)
 #define REMOTE_IRQn USART3_IRQn
-#endif
 
 #define INT_WIDTH 2		/* internal timer pulse width */
 

@@ -10,6 +10,7 @@
 #include "sync.h"
 #include "serialio.h"
 #include "lclcmd.h"
+#include "remcmd.h"
 
 #if PIN_DISPLAY
 void pinDisplay();
@@ -236,10 +237,12 @@ int16_t syncLoop(void)
     if (chRdy())		/* if character available */
     {
      ch = chRead();		/* return it */
+#if 0
      if (ch == 3)		/* if control c */
      {
       setupDone = 1;		/* force setup done */
      }
+#endif
     }
    }
 #endif
