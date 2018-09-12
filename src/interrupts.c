@@ -123,6 +123,15 @@ void cmpTmrISR(void)
 #endif
     }
    }
+   else if (cmpTmr.measure)	/* if measure flag set */
+   {
+    cmpTmr.measure = 0;		/* indicate measurement done */
+    cmpTmrStop();		/* stop timer */
+   }
+   else
+   {
+    cmpTmr.missedStart += 1;	/* count missed start */
+   }
 
   if (DBG_COUNT)
   {

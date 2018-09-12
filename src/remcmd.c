@@ -98,6 +98,10 @@ void remcmd()
  parm = valRem;
  switch (parm)
  {
+ case SYNC_SETUP:
+  encoderSetup();
+  break;
+
  case SYNC_START:
   encoderStart();
   break;

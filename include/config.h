@@ -2,7 +2,7 @@
 #include "inttmr.h"
 
 #define PIN_DISPLAY 0
-#define ENCODER_TEST 1
+#define ENCODER_TEST 0
 #define USEC_MIN (60L * 1000000L)
 
 #define DBGPORT USART1
@@ -36,3 +36,9 @@
 #include "inttmr.h"
 #include "cmptmr.h"
 #include "pins.h"
+
+#define readySet() xFlagSet()
+#define readyClr() xFlagSet()
+#define ready() xFlag()
+
+#define start() zFlag()

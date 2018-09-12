@@ -358,8 +358,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(Led_GPIO_Port, Led_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, ATest_Pin|BTest_Pin|SPI_SEL_Pin|Dbg1_Pin 
-                          |Dbg0_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, XFlag_Pin|SPI_SEL_Pin|Dbg1_Pin|Dbg0_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, Dbg5_Pin|Dbg4_Pin|Dbg3_Pin|Dbg2_Pin 
@@ -368,6 +367,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin : Led_Pin */
   GPIO_InitStruct.Pin = Led_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(Led_GPIO_Port, &GPIO_InitStruct);
 
@@ -383,11 +383,16 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(ExtI_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : ATest_Pin BTest_Pin SPI_SEL_Pin Dbg1_Pin 
-                           Dbg0_Pin */
-  GPIO_InitStruct.Pin = ATest_Pin|BTest_Pin|SPI_SEL_Pin|Dbg1_Pin 
-                          |Dbg0_Pin;
+  /*Configure GPIO pin : ZFlag_Pin */
+  GPIO_InitStruct.Pin = ZFlag_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(ZFlag_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : XFlag_Pin SPI_SEL_Pin Dbg1_Pin Dbg0_Pin */
+  GPIO_InitStruct.Pin = XFlag_Pin|SPI_SEL_Pin|Dbg1_Pin|Dbg0_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
@@ -402,6 +407,7 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pin = Dbg5_Pin|Dbg4_Pin|Dbg3_Pin|Dbg2_Pin 
                           |SyncOut_Pin|IndexTest_Pin|Encoder_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 

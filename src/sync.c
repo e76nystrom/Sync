@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include <limits.h>
 
+#include "remvar.h"
 #include "serialio.h"
 #define EXT
 #endif
@@ -44,6 +45,7 @@ EXT unsigned int remcmdUpdateTime;
 EXT unsigned int remcmdTimeout;
 
 EXT uint32_t cfgFcy;
+EXT uint64_t clocksMin;		/* timer clocks per minute */
 
 EXT int16_t encTmo;		/* encoder pulse timeout */
 
@@ -66,6 +68,10 @@ typedef struct
  int intPulse;			/* internal pulse number */
  uint32_t intClocks;		/* clocks in current internal cycle */
 
+ int measure;			/* measure flag */
+
+ int missedStart;		/* start flag missed */
+
 #if START_DELAY
  int16_t startDelay;		/* initial delay */
 #endif
@@ -77,6 +83,9 @@ typedef struct
 
 EXT T_CMP_TMR cmpTmr;
 
+void encoderSetup();
+void encoderMeasure();
+void encoderCalculate();
 void encoderStart();
 void encoderStop();
 
@@ -133,6 +142,55 @@ unsigned int millis()
  return((unsigned int) uwTick);
 }
 
+void encoderSetup()
+{
+ cmpTmr.encCycLen = syncCycle;
+ cmpTmr.encCycLen = syncOutput;
+ cmpTmr.preScale = syncPrescaler;
+}
+
+void encoderMeasure()
+{
+ encoderStop();			/* stop encoder */
+
+#if ARRAY
+ cmpTmr.encCycLen = ARRAY_LEN;	/* initialize cycle length */
+ cmpTmr.cycleClocks = 0;	/* clear cycle clocks */
+ cmpTmr.lastEnc = 0;		/* clear last encoder vale */
+ memset(&cmpTmr.delta, 0, sizeof(cmpTmr.delta)); /* clear delta array */
+#else
+ cmpTmr.encCycLen = 2048;	/* init cycle length */
+#endif
+
+ cmpTmr.encPulse = cmpTmr.encCycLen; /* set number to count */
+
+ cmpTmrClrIE();			/* disable update interrupts */
+ cmpTmrClr();			/* clear counter */
+ cmpTmrSet(0xffff);		/* set count to maximum */
+ cmpTmrScl(0);			/* set prescaler */
+ cmpTmrCap1EnaSet();		/* enable capture from encoer */
+ cmpTmrCap1SetIE();		/* enable capture interrupt */
+ cmpTmr.intClocks = 0;		/* clear clocks in current cycle */
+ cmpTmrStart();			/* start capture timer */
+}
+
+void encoderCalculate()
+{
+ uint64_t n = clocksMin * cmpTmr.encCycLen;
+ uint64_t d = ((uint64_t) cmpTmr.cycleClocks * syncEncoder);
+ uint16_t rpm = (uint16_t) (n / d);
+
+ uint32_t pulseMinIn = syncEncoder * rpm;
+ uint32_t pulseMinOut = (pulseMinIn * syncOutput) / syncCycle;
+ uint32_t clocksPulse = (uint32_t) (clocksMin / pulseMinOut);
+ syncPrescaler = clocksPulse >> 16;
+ printf("n %lld d %lld rpm %d preScaler %d\n",
+	n, d, rpm, syncPrescaler);
+ if (syncPrescaler == 0)
+  syncPrescaler = 1;
+ cmpTmr.preScale = syncPrescaler;
+}
+
 void encoderStart()
 {
  encoderStop();			/* stop encoder */
@@ -155,6 +213,7 @@ void encoderStart()
 #endif
 
  cmpTmr.encClocks = 0;		/* clear clocks in current cycle */
+ cmpTmr.missedStart = 0;	/* clear missed flag */
 
  cmpTmr.encPulse = cmpTmr.encCycLen; /* initialize encoder counter */
  cmpTmr.intPulse = cmpTmr.intCycLen; /* initialize internal counter */

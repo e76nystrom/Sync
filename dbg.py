@@ -4,6 +4,8 @@ pinList = \
 (\
  ("Encoder", "out", "encoder pulse output"),
  ("SyncOut", "out", "sync signal output"),
+ ("ZFlag", "in", "start encoder"),
+ ("XFlag", "out", "encoder ready"),
  ("Led", "out", "led output"),
  ("A", "in", "a encoder input"),
  ("B", "in", "b encoder input"),

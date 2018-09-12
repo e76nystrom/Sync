@@ -8,6 +8,14 @@
 #define syncOutClr() SyncOut_GPIO_Port->BSRR = (SyncOut_Pin << 16)
 #define syncOut() ((SyncOut_Pin & SyncOut_GPIO_Port->ODR) != 0)
 
+/* start encoder */
+#define zFlag() ((ZFlag_Pin & ZFlag_GPIO_Port->IDR) != 0)
+
+/* encoder ready */
+#define xFlagSet() XFlag_GPIO_Port->BSRR = XFlag_Pin
+#define xFlagClr() XFlag_GPIO_Port->BSRR = (XFlag_Pin << 16)
+#define xFlag() ((XFlag_Pin & XFlag_GPIO_Port->ODR) != 0)
+
 /* led output */
 #define ledSet() Led_GPIO_Port->BSRR = Led_Pin
 #define ledClr() Led_GPIO_Port->BSRR = (Led_Pin << 16)

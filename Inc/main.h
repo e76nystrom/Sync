@@ -55,10 +55,10 @@
 #define Index_GPIO_Port GPIOA
 #define ExtI_Pin GPIO_PIN_1
 #define ExtI_GPIO_Port GPIOA
-#define ATest_Pin GPIO_PIN_2
-#define ATest_GPIO_Port GPIOA
-#define BTest_Pin GPIO_PIN_3
-#define BTest_GPIO_Port GPIOA
+#define ZFlag_Pin GPIO_PIN_2
+#define ZFlag_GPIO_Port GPIOA
+#define XFlag_Pin GPIO_PIN_3
+#define XFlag_GPIO_Port GPIOA
 #define SPI_SEL_Pin GPIO_PIN_4
 #define SPI_SEL_GPIO_Port GPIOA
 #define Dbg5_Pin GPIO_PIN_0

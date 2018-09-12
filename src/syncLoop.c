@@ -12,6 +12,11 @@
 #include "lclcmd.h"
 #include "remcmd.h"
 
+enum RUN_STATE {ST_IDLE, ST_WAIT_RPM, ST_WAIT_DONE};
+
+void runControl();
+int runState;
+
 #if PIN_DISPLAY
 void pinDisplay();
 
@@ -27,59 +32,6 @@ typedef struct
 
 T_PINDEF pinDef[] =
 {
- PIN(StepZ, Step1),
- PIN(DirZ, Dir1),
-#ifdef Step2a_Pin
- PIN(StepX, Step2a),
-#endif
-#ifdef Step2_Pin
- PIN(StepX, Step2),
-#endif
-#ifdef Step2b_Pin
- PIN(Step2b, Step2b),
-#endif
- PIN(DirX, Dir2),
- PIN(Step3, Step3),
- PIN(Dir3, Dir3),
- PIN(Step4, Step4),
- PIN(Dir4, Dir4),
- PIN(StepSp, Step5),
- PIN(DirSp, Dir5),
-
- PIN(Index1, Index1),
- PIN(Index2, Index2),
-
- PIN(Pin1,  Pin1),
- PIN(Pin14, Pin14),
- PIN(Pin16, Pin16),
- PIN(Pin17, Pin17),
- 
- PIN(Pin10, Pin10),
- PIN(Pin11, Pin11),
- PIN(Pin12, Pin12),
- PIN(Pin13, Pin13),
- PIN(Pin15, Pin15),
-
- PIN(ExtInt, ExtInt),
- PIN(ZFlag, ZFlag),
- PIN(XFlag, XFlag),
- PIN(Encoder, Encoder),
-
- PIN(DbgTx, DbgTx),
- PIN(DbgRx, DbgRx),
- PIN(RemTx, RemTx),
- PIN(RemRx, RemRx),
-
- PIN(JogA1, JogA1),
- PIN(JogB1, JogB1),
- PIN(JogA2, JogA2),
- PIN(JogB2, JogB2),
-
- PIN(ZA, ZA),
- PIN(ZB, ZB),
- PIN(XA, XA),
- PIN(XB, XB),
-
 #include "dbgPin.h"
 };
 
@@ -123,12 +75,14 @@ void syncLoopSetup()
  indexTmrClrIF();
  indexTmrSetIE();
  indexTmrStart();
- #endif
-
+#endif
 }
+
+#define LED_DELAY 500
 
 int16_t syncLoop(void)
 {
+ uint32_t ledUpdTime;
  unsigned char ch;
  uint32_t extInt[] =
  {
@@ -173,10 +127,11 @@ int16_t syncLoop(void)
 	getSP());
  #endif
 
- unsigned int clockFreq = HAL_RCC_GetHCLKFreq();
- unsigned int FCY = HAL_RCC_GetPCLK2Freq();
+ uint32_t clockFreq = HAL_RCC_GetHCLKFreq();
+ uint32_t FCY = HAL_RCC_GetPCLK2Freq();
  cfgFcy = FCY;
- printf("clock frequency %u FCY %u %x\n",
+ clocksMin = FCY * 60;
+ printf("clock frequency %lu FCY %lu %x\n",
 	clockFreq, FCY, (unsigned int) &cfgFcy);
  printf("sysTick load %d\n", (int) SysTick->LOAD);
 
@@ -187,11 +142,25 @@ int16_t syncLoop(void)
  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn); /* encoder interrupts */
  EXTI->PR = A_Pin | B_Pin;
 
+ ledUpdTime = millis();
+ ledSet();
  while (1)			/* main loop */
  {
   newline();
   while (1)			/* input background loop */
   {
+   runControl();		/* call run control state machine */
+
+   uint32_t t = millis();
+   if ((t - ledUpdTime) > LED_DELAY) /* if time to flash led */
+   {
+    ledUpdTime = t;
+    if (led())
+     ledClr();
+    else
+     ledSet();
+   }
+
 #if 0
    if (encoder())		/* if encoder set */
    {
@@ -258,6 +227,38 @@ int16_t syncLoop(void)
    remcmdUpdateTime = millis();
 #endif
 #endif
+ }
+}
+
+void runControl()
+{
+ switch(runState)
+ {
+ case ST_IDLE:			/* 0 idle */
+  if (start())			/* if time to start */
+  {
+   encoderMeasure();		/* start rpm measurement */
+   runState = ST_WAIT_RPM;	/* wait for measurement */
+  }
+  break;
+
+ case ST_WAIT_RPM:		/* 1 wait for rpm measruement */
+  if (cmpTmr.measure == 0)	/* if measurement complete */
+  {
+   encoderCalculate();		/* calculate actual prescaler */
+   encoderStart();		/* start encoder */
+   readySet();			/* set ready bit */
+   runState = ST_WAIT_DONE;	/* wait for done */
+  }
+  break;
+
+ case ST_WAIT_DONE:		/* 2 wait for start cleared */
+  if (!start())			/* if start bit cleared */
+  {
+   readyClr();			/* clear ready bit */
+   runState = ST_IDLE;		/* return to idle state */
+  }
+  break;
  }
 }
 
