@@ -107,7 +107,7 @@ void remcmd()
   break;
 
  case SYNC_STOP:
-  encoderStop();
+  cmpTmr.stop = 1;		/* set stop flag */
   break;
   
  case SYNC_LOADVAL:		/* load a local parameter */

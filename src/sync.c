@@ -54,6 +54,7 @@ typedef struct
  uint32_t encCount;		/* encoder counts */
  uint32_t intCount;		/* internal counts */
  uint32_t cycleCount;		/* encoder cycle counter */
+ int missedStart;		/* start flag missed */
  
  int16_t encCycLen;		/* encoder cycle length */
  int16_t encPulse;		/* encoder pulse number */
@@ -63,14 +64,14 @@ typedef struct
 
  uint16_t preScale;		/* counter pre scaler */
 
- int startInt;			/* start internal timer */
  int intCycLen;			/* internal cycle length */
  int intPulse;			/* internal pulse number */
  uint32_t intClocks;		/* clocks in current internal cycle */
 
- int measure;			/* measure flag */
+ boolean startInt;		/* start internal timer */
+ boolean measure;		/* measure flag */
+ boolean stop;			/* stop flag */
 
- int missedStart;		/* start flag missed */
 
 #if START_DELAY
  int16_t startDelay;		/* initial delay */
@@ -151,6 +152,7 @@ void encoderSetup()
 
 void encoderMeasure()
 {
+ printf("encoderMeasure\n");
  encoderStop();			/* stop encoder */
 
 #if ARRAY
@@ -163,6 +165,7 @@ void encoderMeasure()
 #endif
 
  cmpTmr.encPulse = cmpTmr.encCycLen; /* set number to count */
+ cmpTmr.measure = 1;		/* set measurement flag */
 
  cmpTmrClrIE();			/* disable update interrupts */
  cmpTmrClr();			/* clear counter */
@@ -176,6 +179,7 @@ void encoderMeasure()
 
 void encoderCalculate()
 {
+ printf("encoderCalculate\n");
  uint64_t n = clocksMin * cmpTmr.encCycLen;
  uint64_t d = ((uint64_t) cmpTmr.cycleClocks * syncEncoder);
  uint16_t rpm = (uint16_t) (n / d);
@@ -186,16 +190,19 @@ void encoderCalculate()
  syncPrescaler = clocksPulse >> 16;
  printf("n %lld d %lld rpm %d preScaler %d\n",
 	n, d, rpm, syncPrescaler);
- if (syncPrescaler == 0)
-  syncPrescaler = 1;
- cmpTmr.preScale = syncPrescaler;
+ syncPrescaler += 1;
 }
 
 void encoderStart()
 {
  encoderStop();			/* stop encoder */
 
- printf("encoderStart\n");
+ cmpTmr.encCycLen = syncCycle;
+ cmpTmr.intCycLen = syncOutput;
+ cmpTmr.preScale = syncPrescaler;
+
+ printf("encoderStart cycle %d output %d preScale %u\n",
+	cmpTmr.encCycLen, cmpTmr.intCycLen, cmpTmr.preScale);
  intTmrClr();			/* clear counter */
 #if START_DELAY == 0
  intTmrSet(0xffff);		/* set count to maximum */
@@ -213,7 +220,6 @@ void encoderStart()
 #endif
 
  cmpTmr.encClocks = 0;		/* clear clocks in current cycle */
- cmpTmr.missedStart = 0;	/* clear missed flag */
 
  cmpTmr.encPulse = cmpTmr.encCycLen; /* initialize encoder counter */
  cmpTmr.intPulse = cmpTmr.intCycLen; /* initialize internal counter */
@@ -222,6 +228,7 @@ void encoderStart()
  cmpTmr.encCount = 0;		/* clear counters */
  cmpTmr.intCount = 0;
  cmpTmr.cycleCount = 0;
+ cmpTmr.missedStart = 0;	/* clear missed flag */
 #endif
 
  cmpTmrClrIE();			/* disable update interrupts */
@@ -231,7 +238,11 @@ void encoderStart()
  cmpTmrCap1EnaSet();		/* enable capture from encoer */
  cmpTmrCap1SetIE();		/* enable capture interrupt */
  cmpTmr.intClocks = 0;		/* clear clocks in current cycle */
- cmpTmr.startInt = 1;
+ cmpTmr.measure = 0;		/* clear measure flag */
+ cmpTmr.stop = 0;		/* clear stop flag */
+ cmpTmr.startInt = 1;		/* start internal timer */
+ if (DBG_INT)
+  dbgCycEndSet();
 #if DBGTRK
  dbgTrk = true;
 #endif
@@ -434,6 +445,9 @@ void gpioInfo(GPIO_TypeDef *gpio)
  printf("OTYPER  %8x\n",(unsigned int) gpio->OTYPER);
  printf("OSPEEDR %8x ",(unsigned int) gpio->OSPEEDR);
  printf("PUPDR   %8x\n",(unsigned int) gpio->PUPDR);
+#else
+ printf("CRL    %8x ",(unsigned int) gpio->CRL);
+ printf("CRH    %8x\n",(unsigned int) gpio->CRH);
 #endif
  printf("IDR     %8x ",(unsigned int) gpio->IDR);
  printf("ODR     %8x\n",(unsigned int) gpio->ODR);
@@ -470,6 +484,24 @@ void gpioInfo(GPIO_TypeDef *gpio)
  val = gpio->PUPDR;
  for (i = 0; i < 16; i++)
   printf(" %2d", (val >> (2 * i)) & 0x3);
+#else
+ printf("\nmode     ");
+ val = gpio->CRL;
+ for (i = 0; i < 8; i++)
+  printf(" %2d", (val >> (4 * i)) & 0x3);
+
+ val = gpio->CRH;
+ for (i = 0; i < 8; i++)
+  printf(" %2d", (val >> (4 * i)) & 0x3);
+
+ printf("\ncnf      ");
+ val = gpio->CRL;
+ for (i = 0; i < 8; i++)
+  printf(" %2d", (val >> ((4 * i) + 2)) & 0x3);
+
+ val = gpio->CRH;
+ for (i = 0; i < 8; i++)
+  printf(" %2d", (val >> ((4 * i) + 2)) & 0x3);
 #endif
 
  printf("\nidr      ");

@@ -104,17 +104,16 @@ int16_t syncLoop(void)
  while (--i >= 0)		/* while not at end of list */
   HAL_NVIC_DisableIRQ(*p++);	/* disable external interrupt */
 
-#ifdef REMPORT
 #ifdef REM_ISR
  initRem();
 #else
- HAL_NVIC_DisableIRQ(USART1_IRQn);
-#endif
+ HAL_NVIC_DisableIRQ(REMOTE_IRQn);
 #endif
 
  initCharBuf();
 
  putstr("start sync loop\n");
+ putstr1("start remcmd\n");
 
  syncLoopSetup();
  
@@ -130,7 +129,7 @@ int16_t syncLoop(void)
  uint32_t clockFreq = HAL_RCC_GetHCLKFreq();
  uint32_t FCY = HAL_RCC_GetPCLK2Freq();
  cfgFcy = FCY;
- clocksMin = FCY * 60;
+ clocksMin = (uint64_t) FCY * 60;
  printf("clock frequency %lu FCY %lu %x\n",
 	clockFreq, FCY, (unsigned int) &cfgFcy);
  printf("sysTick load %d\n", (int) SysTick->LOAD);
@@ -144,6 +143,7 @@ int16_t syncLoop(void)
 
  ledUpdTime = millis();
  ledSet();
+ readySet();
  while (1)			/* main loop */
  {
   newline();
@@ -190,7 +190,6 @@ int16_t syncLoop(void)
     break;
    }
 
-#ifdef REMPORT
 #if REM_ISR == 0
    if (chRdy1())		/* if character on remote link */
    {
@@ -215,17 +214,14 @@ int16_t syncLoop(void)
     }
    }
 #endif
-#endif
   }
 
   flushBuf();
   lclcmd(ch);			/* local commands */
   flushBuf();
-#ifdef REMPORT
 #if REM_ISR == 0
   if (remcmdTimeout < UINT_MAX)
    remcmdUpdateTime = millis();
-#endif
 #endif
  }
 }
@@ -235,7 +231,7 @@ void runControl()
  switch(runState)
  {
  case ST_IDLE:			/* 0 idle */
-  if (start())			/* if time to start */
+  if (startEQ0())		/* if time to start */
   {
    encoderMeasure();		/* start rpm measurement */
    runState = ST_WAIT_RPM;	/* wait for measurement */
@@ -247,15 +243,23 @@ void runControl()
   {
    encoderCalculate();		/* calculate actual prescaler */
    encoderStart();		/* start encoder */
-   readySet();			/* set ready bit */
+   printf("PA3 %d\n", ((XFlag_Pin & XFlag_GPIO_Port->ODR) != 0));
+   printf("readyClr()\n");
+//   xFlagClr();
+   readyClr();			/* set ready bit */
+   printf("PA3 %d\n", ((XFlag_Pin & XFlag_GPIO_Port->ODR) != 0));
    runState = ST_WAIT_DONE;	/* wait for done */
   }
   break;
 
  case ST_WAIT_DONE:		/* 2 wait for start cleared */
-  if (!start())			/* if start bit cleared */
+  if (startNE0())		/* if start bit cleared */
   {
-   readyClr();			/* clear ready bit */
+   printf("PA3 %d\n", ((XFlag_Pin & XFlag_GPIO_Port->ODR) != 0));
+   printf("readySet()\n");
+//   xFlagSet();
+   readySet();			/* clear ready bit */
+   printf("PA3 %d\n", ((XFlag_Pin & XFlag_GPIO_Port->ODR) != 0));
    runState = ST_IDLE;		/* return to idle state */
   }
   break;

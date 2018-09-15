@@ -126,21 +126,20 @@ void cmpTmrISR(void)
    else if (cmpTmr.measure)	/* if measure flag set */
    {
     cmpTmr.measure = 0;		/* indicate measurement done */
+    cmpTmrCap1ClrIE();		/* clear capture 1 interrupt enable */
+    cmpTmrStop();		/* stop timer */
+   }
+   else if (cmpTmr.stop)	/* if time to stop */
+   {
+    cmpTmr.stop = 0;		/* clear stop flag */
+    cmpTmrCap1ClrIE();		/* clear capture 1 interrupt enable */
     cmpTmrStop();		/* stop timer */
    }
    else
    {
-    cmpTmr.missedStart += 1;	/* count missed start */
+    if (DBG_COUNT)
+     cmpTmr.missedStart += 1;	/* count missed start */
    }
-
-  if (DBG_COUNT)
-  {
-   cmpTmr.encCount += 1;	/* count interrupt */
-   if (DBG_CMP)
-   {
-    toggle(cmpTmr.encCount & 1, dbgIntCSet(), dbgIntCClr());
-   }
-  }
 
    if (DBG_COUNT)
    {
@@ -149,6 +148,15 @@ void cmpTmrISR(void)
     {
      toggle(cmpTmr.cycleCount & 1, dbgCycleSet(), dbgCycleClr());
     }
+   }
+  }
+
+  if (DBG_COUNT)
+  {
+   cmpTmr.encCount += 1;	/* count interrupt */
+   if (DBG_CMP)
+   {
+    toggle(cmpTmr.encCount & 1, dbgIntCSet(), dbgIntCClr());
    }
   }
  }
@@ -175,11 +183,10 @@ void intTmrISR(void)
  intTmrClrIF();			/* clear interrupt */
 #if START_DELAY == 0
  cmpTmr.intPulse -= 1;		/* count a pulse in cycle */
+#endif
  uint32_t ctr  = ((cmpTmr.cycleClocks - cmpTmr.intClocks) /
 		  cmpTmr.intPulse);
-#else
- uint32_t ctr  = ((cmpTmr.cycleClocks - cmpTmr.intClocks) /
-		  cmpTmr.intPulse);
+#if START_DELAY != 0
  cmpTmr.intPulse -= 1;		/* count a pulse in cycle */
 #endif
  cmpTmr.intClocks += ctr;	/* update count for next interrupt */
@@ -212,7 +219,8 @@ void intTmrISR(void)
   intTmrClr();			/* clear counter */
   cmpTmr.intPulse = cmpTmr.intCycLen; /* initialize counter to cycle len */
   cmpTmr.intClocks = 0;		/* clear clock counter */
-  cmpTmr.startInt = 1;		/* start on next encoder pulse */
+  if (cmpTmr.stop == 0)		/* if time to stop */
+   cmpTmr.startInt = 1;		/* start on next encoder pulse */
 
   if (DBG_INT)
    dbgCycEndSet();

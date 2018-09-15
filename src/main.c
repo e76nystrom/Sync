@@ -317,7 +317,7 @@ static void MX_USART3_UART_Init(void)
 {
 
   huart3.Instance = USART3;
-  huart3.Init.BaudRate = 115200;
+  huart3.Init.BaudRate = 57600;
   huart3.Init.WordLength = UART_WORDLENGTH_8B;
   huart3.Init.StopBits = UART_STOPBITS_1;
   huart3.Init.Parity = UART_PARITY_NONE;
@@ -377,17 +377,11 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(Index_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : ExtI_Pin */
-  GPIO_InitStruct.Pin = ExtI_Pin;
+  /*Configure GPIO pins : ExtI_Pin ZFlag_Pin */
+  GPIO_InitStruct.Pin = ExtI_Pin|ZFlag_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(ExtI_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : ZFlag_Pin */
-  GPIO_InitStruct.Pin = ZFlag_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(ZFlag_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : XFlag_Pin SPI_SEL_Pin Dbg1_Pin Dbg0_Pin */
   GPIO_InitStruct.Pin = XFlag_Pin|SPI_SEL_Pin|Dbg1_Pin|Dbg0_Pin;

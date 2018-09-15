@@ -37,8 +37,18 @@
 #include "cmptmr.h"
 #include "pins.h"
 
-#define readySet() xFlagSet()
-#define readyClr() xFlagSet()
-#define ready() xFlag()
+//#define readySet() xFlagSet()
+//#define readyClr() xFlagSet()
+//#define ready() xFlag()
 
-#define start() zFlag()
+/* start encoder */
+#define start() ((ZFlag_Pin & ZFlag_GPIO_Port->IDR) != 0)
+#define startNE0() ((ZFlag_Pin & ZFlag_GPIO_Port->IDR) != 0)
+#define startEQ0() ((ZFlag_Pin & ZFlag_GPIO_Port->IDR) == 0)
+
+/* encoder ready */
+#define readySet() XFlag_GPIO_Port->BSRR = XFlag_Pin
+#define readyClr() XFlag_GPIO_Port->BSRR = (XFlag_Pin << 16)
+#define ready() ((XFlag_Pin & XFlag_GPIO_Port->ODR) != 0)
+
+//#define start() zFlag()

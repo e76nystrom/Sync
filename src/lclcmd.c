@@ -106,6 +106,19 @@ void lclcmd(int ch)
   newline();
   encoderStart();
  }
+ else if (ch == 'S')
+ {
+  printf("\nstop encoder\n");
+  cmpTmr.stop = 1;
+ }
+#if DBG_COUNT
+ else if (ch == 't')
+ {
+  printf("\nencCount %ld intCount %ld cycleCount %ld missedStart %d\n",
+	 cmpTmr.encCount, cmpTmr.intCount, cmpTmr.cycleCount,
+	 cmpTmr.missedStart);
+ }
+#endif
  else if (ch == '?')
  {
   newline();
@@ -280,7 +293,7 @@ void lclcmd(int ch)
   }
  }
 
-#if 0
+#if 1
  else if (ch == 'Q')		/* print peripheral info */
  {
   printf(" flag: ");
@@ -301,10 +314,14 @@ void lclcmd(int ch)
    tmrInfo(TIM2);
   if (val & 0x04)
    tmrInfo(TIM3);
+#ifdef TIM4
   if (val & 0x08)
    tmrInfo(TIM4);
+#endif
+#ifdef TIM5
   if (val & 0x10)
    tmrInfo(TIM5);
+#endif
   if (val & 0x20)
   {
 #ifdef TIM6
@@ -318,12 +335,18 @@ void lclcmd(int ch)
   if (val & 0x40)
    tmrInfo(TIM8);
 #endif
+#ifdef TIM9
   if (val & 0x80)
    tmrInfo(TIM9);
+#endif
+#ifdef TIM10
   if (val & 0x100)
    tmrInfo(TIM10);
+#endif
+#ifdef TIM11
   if (val & 0x200)
    tmrInfo(TIM11);
+#endif
 #ifdef TIM12
   if (val & 0x400)
    tmrInfo(TIM12);
