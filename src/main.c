@@ -428,6 +428,56 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+ssize_t _write (int fd, const char* buf, size_t nbyte);
+
+void _init()
+{
+}
+
+caddr_t _sbrk(int incr)
+{
+ extern char _end;		/* Defined by the linker */
+ static char *heap_end;
+ char *prev_heap_end;
+ char *sp = (char *)&sp;
+
+ if (heap_end == 0)
+ {
+  heap_end = &_end;
+ }
+ prev_heap_end = heap_end;
+ heap_end += incr;
+ if (heap_end > sp)
+ {
+  _write (1, "Heap and stack collision\n", 25);
+//  errno = ENOMEM;
+  return (caddr_t)-1;
+ }
+ return (caddr_t) prev_heap_end;
+}
+
+void _close()
+{
+}
+
+int _fstat()
+{
+ return(0);
+}
+
+int _isatty()
+{
+ return(1);
+}
+
+void _lseek()
+{
+}
+
+void _read()
+{
+}
+
 /* USER CODE END 4 */
 
 /**
