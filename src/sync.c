@@ -72,7 +72,6 @@ typedef struct
  boolean measure;		/* measure flag */
  boolean stop;			/* stop flag */
 
-
 #if START_DELAY
  int16_t startDelay;		/* initial delay */
 #endif
