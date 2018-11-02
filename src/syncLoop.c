@@ -16,6 +16,8 @@ enum RUN_STATE {ST_IDLE, ST_WAIT_RPM, ST_WAIT_DONE};
 
 void runControl();
 int runState;
+uint32_t runTime;
+#define RUN_TIMEOUT 5000
 
 #if PIN_DISPLAY
 void pinDisplay();
@@ -234,6 +236,7 @@ void runControl()
   if (startEQ0())		/* if time to start */
   {
    encoderMeasure();		/* start rpm measurement */
+   runTime = millis();		/* save start time */
    runState = ST_WAIT_RPM;	/* wait for measurement */
   }
   break;
@@ -243,24 +246,34 @@ void runControl()
   {
    encoderCalculate();		/* calculate actual prescaler */
    encoderStart();		/* start encoder */
-   printf("PA3 %d\n", ((XFlag_Pin & XFlag_GPIO_Port->ODR) != 0));
+//   printf("PA3 %d\n", ((XFlag_Pin & XFlag_GPIO_Port->ODR) != 0));
    printf("readyClr()\n");
-//   xFlagClr();
    readyClr();			/* set ready bit */
-   printf("PA3 %d\n", ((XFlag_Pin & XFlag_GPIO_Port->ODR) != 0));
+//   printf("PA3 %d\n", ((XFlag_Pin & XFlag_GPIO_Port->ODR) != 0));
+   runTime = millis();		/* save time */
    runState = ST_WAIT_DONE;	/* wait for done */
+  }
+  else if ((millis() - runTime) > RUN_TIMEOUT)
+  {
+   cmpTmr.measure = 0;		/* clear measure flag */
+   encoderStop();		/* stop encoder */
+   runState = ST_IDLE;		/* return to idle state*/
   }
   break;
 
  case ST_WAIT_DONE:		/* 2 wait for start cleared */
   if (startNE0())		/* if start bit cleared */
   {
-   printf("PA3 %d\n", ((XFlag_Pin & XFlag_GPIO_Port->ODR) != 0));
+//   printf("PA3 %d\n", ((XFlag_Pin & XFlag_GPIO_Port->ODR) != 0));
    printf("readySet()\n");
-//   xFlagSet();
    readySet();			/* clear ready bit */
-   printf("PA3 %d\n", ((XFlag_Pin & XFlag_GPIO_Port->ODR) != 0));
+//   printf("PA3 %d\n", ((XFlag_Pin & XFlag_GPIO_Port->ODR) != 0));
    runState = ST_IDLE;		/* return to idle state */
+  }
+  else if ((millis() - runTime) > RUN_TIMEOUT)
+  {
+   readySet();			/* clear ready bit */
+   runState = ST_IDLE;		/* return to idle state*/
   }
   break;
  }
